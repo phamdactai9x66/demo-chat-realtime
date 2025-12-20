@@ -1,35 +1,75 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useEffect, useRef, useState } from "react";
+import "./App.css";
+
+import { db } from "./firebase";
+import { onValue, push, ref, set } from "firebase/database";
+
+//  "Chốt lại 4 bước: Lấy nội dung -> Kiểm tra -> Gửi -> Xóa ô nhập. AI Coder xin phép bắt đầu code!"
 
 function App() {
-  const [count, setCount] = useState(0)
+  const inputRef = useRef("");
+  const [conversation, setConversation] = useState([]);
+
+  const onClick = async () => {
+    const message = inputRef.current.value;
+
+    if (message) {
+      console.log(message);
+
+      await set(push(ref(db, "messages/")), {
+        message,
+      });
+
+      // logic handle server
+      inputRef.current.value = "";
+    }
+  };
+
+  const handleData = (data) => {
+    let arr = [];
+
+    for (const key in data) {
+      arr.push({
+        _id: key,
+        ...data[key],
+      });
+    }
+
+    setConversation(arr);
+  };
+
+  const renderData = () => {
+    return conversation.map((item) => {
+      return (
+        <div key={item._id}>
+          <p>{item.message}</p>
+        </div>
+      );
+    });
+  };
+
+  useEffect(() => {
+    const starCountRef = ref(db, "messages/");
+    onValue(starCountRef, (snapshot) => {
+      const data = snapshot.val();
+
+      handleData(data);
+      // updateStarCount(postElement, data);
+    });
+  }, []);
 
   return (
     <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+      <div className="container">
+        <div className="conversation">{renderData()}</div>
+
+        <div className="footer">
+          <input type="text" placeholder="Typing..." ref={inputRef} />
+          <button onClick={onClick}>Send</button>
+        </div>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
     </>
-  )
+  );
 }
 
-export default App
+export default App;
